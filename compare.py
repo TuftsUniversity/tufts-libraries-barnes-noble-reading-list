@@ -45,23 +45,24 @@ bNFilename = askopenfilename(title = "Select the Excel File parsed from Barnes &
 
 managedSetFilename = askopenfilename(title = "Select the Excel File output from the Managed Set")
 
-#bndf = pd.read_excel(bNFilename, encoding = 'windows-1252', dtype={'MMS Id': 'str', 'Permanent Call Number': 'str', 'Barcode': 'str', 'Loan Fiscal Year':'str'}, converters={'Loan Date': pd.to_datetime, 'Loan Time': pd.to_datetime, 'Return Date': pd.to_datetime, 'Return Time': pd.to_datetime}, skipfooter=1)
+
 bndf = pd.read_excel(bNFilename)
 msdf = pd.read_excel(managedSetFilename)
 
 msdf = msdf.loc[:,~msdf.columns.duplicated()]
 
+
 print(bndf)
 
-#print("\n\n\n")
-#print(bndf)
-#print("\n\n\n\n\n")
-#print(msdf)
-#print("\n\n\n")
+
 
 
 bndf['Additional Barcodes or Material Type'] = bndf['Additional Barcodes or Material Type'].str.replace(' ', '')
 bndf['Additional Barcodes or Material Type'] = bndf['Additional Barcodes or Material Type'].str.split(';')
+
+#bndf['Additional Barcodes or Material Type'] = bndf['Additional Barcodes or Material Type'].astype('int64')
+bndf = bndf.fillna(0)
+bndf['ISBN'] = bndf['ISBN'].astype('object')
 
 print(str(bndf) + "\n\n")
 
@@ -91,50 +92,36 @@ bndf = pd.melt(bndf, id_vars=(['Author', 'Title', 'Edition', 'Publisher', 'Impri
 
 print("\n\n\n" + str(bndf))
 
-bndf = bndf.drop('variable', axis=1)
 
-bndf.to_excel("Books to Order Fall 2019.xlsx", index=False)
-# # bndf = bndf.rename(columns={'Additional ISBN': 'ISBN.2', 'ISBN: ISBN.1'})
-# # msdf = msdf.rename(columns={'ISBN': 'ISBN.1', 'ISBN (13)': 'ISBN.2'})
-# #bndf = pd.DataFrame(bndf['Additional Barcodes or Material Type'].str.split(';').tolist()).stack()
-# #bndf_series = bndf.apply(lambda x: pd.Series(x['Additional Barcodes or Material Type']).str.split(';').tolist(), axis=1).stack().reset_index(level=1, drop=True)
-# #bndf_series.name = 'Other ISBN'
-# #print("\n\n" + str(bndf_series) + "\n\n")
-# #bdnf = bndf.drop('Additional Barcodes or Material Type', axis=1).join(bndf_series)
-# print(bndf)
-# print("\n\n")
-#
-# #bndf.to_excel("Books to Order Fall 2019.xlsx", index=False)
-#
-#
-# msdf = msdf.fillna("Empty")
-# msdf['ISBN'] = msdf['ISBN'].apply(lambda x: re.sub(r'\D', '', x))
-# msdf['ISBN (13)'] = msdf['ISBN (13)'].apply(lambda x: re.sub(r'\D', '', x))
-#
-#
-#
-# #bndf = pd.DataFrame(bndf['Additional Barcodes or Material Type'].str.split(';').tolist()).stack()
-# #bndf_series = bndf.apply(lambda x: pd.Series(x['Additional Barcodes or Material Type']).str.split(';').tolist(), axis=1).stack().reset_index(level=1, drop=True)
-# #bndf_series.name = 'Other ISBN'
-# #print("\n\n" + str(bndf_series) + "\n\n")
-# #bdnf = bndf.drop('Additional Barcodes or Material Type', axis=1).join(bndf_series)
-# print(msdf)
-# print("\n\n")
-#
-# # orderdf = pd.concat([pd.merge(bndf, msdf, on='ISBN', how='outer', indicator=True),
-# #                     pd.merge(bndf, msdf, left_on='ISBN', right_on='ISBN (13)', how='outer', indicator=True),
-# #                     pd.merge(bndf, msdf, left_on='Additional ISBN', right_on='ISBN', how='outer', indicator=True),
-# #                     pd.merge(bndf, msdf, left_on='Additional ISBN', right_on='ISBN (13)', how='outer', indicator=True)])
-#
-# orderdf = pd.concat([pd.merge(bndf, msdf, left_on='ISBN', how='outer', indicator=True),
-#                     pd.merge(bndf, msdf, left_on='ISBN', right_on='ISBN (13)', how='outer', indicator=True)])
-#
-# orderdf = orderdf[orderdf['_merge'] == 'left_only']
-#
-#
-#
-#
-#
-# orderdf.to_excel("Books to Order Fall 2019.xlsx", index=False)
-#
-# print(orderdf)
+bndf.to_excel("All Barnes & Noble - Separate Rows for Each ISBN - Fall 2019.xlsx", index=False)
+
+
+msdf['ISBN'] = msdf['ISBN'].astype('str')
+msdf['ISBN (13)'] = msdf['ISBN (13)'].astype('str')
+msdf['ISBN'] = msdf['ISBN'].apply(lambda x: re.sub(r'\D', '', x))
+msdf['ISBN (13)'] = msdf['ISBN (13)'].apply(lambda x: re.sub(r'\D', '', x))
+msdf = msdf.fillna('Empty')
+
+keys_m = [c for c in msdf if c.startswith('ISBN')]
+
+print("\n\n" + str(keys))
+
+msdf = pd.melt(msdf, id_vars=(['Title', 'Edition', 'MMS ID']), value_vars=keys_m, value_name='ISBN').drop('variable', axis=1)
+
+
+
+print("\n\n\n" + str(msdf))
+
+
+bndf['ISBN'] = bndf['ISBN'].astype(str)
+bndf = pd.merge(bndf, msdf, on=['ISBN'], how='outer', indicator=True)
+
+bndf = bndf[bndf['_merge']=='left_only']
+
+bndf = bndf.drop(['Title_y', 'Edition_y', 'MMS ID', '_merge'], axis=1)
+bndf = bndf.rename(columns={'Title_x':'Title', 'Edition_x': 'Edition'})
+bndf = bndf.drop_duplicates(subset=['Author', 'Title', 'Edition', 'Publisher', 'Imprint', 'Course', 'Section', 'Professor', 'Course Capacity', 'Actual Enrollment', 'ISBN'], keep='first')
+bndf = bndf.rename(columns={'Title_x':'Title'})
+
+
+bndf.to_excel("Books to Order Fall 2019.xlsx", encoding='utf-8', index=False)

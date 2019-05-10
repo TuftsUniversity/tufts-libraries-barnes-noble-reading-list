@@ -69,6 +69,9 @@ with open(filename, 'rb') as infile:
         line = line.replace("\r", "").replace("\n", "")
         line = re.sub(r'^[ ]{3}(\w)',r'\t\t\1', line)
         line = re.sub(r'^[ ]{9}(?=\w)', r'\t\t\t', line)
+        #this was to take care of an anomoly that appeared in the data for Fall 2019 courses
+        line = re.sub(r'[ ]{3}(-TEXT|-ACCESS\sCARD|-W\/ACCESS)', r'\s\1', line)
+        line = re.sub(r'[ ]{2}(\(HOLLANDER\))', r' \1', line)
         line = re.sub(r'[ ]{2,}', r'\t', line)
 
         if re.match(r'^\t{2}([^\t]+)(\t)([^\t]+)?([\t ])?([^\t]+)?(\t)?([^\t]+)?(\t)?([^\t]+)?([\t ])(\d.+?)$', line):
@@ -172,6 +175,8 @@ with open(filename, 'rb') as infile:
             secondCourseLine = secondCourseLine.replace("\r", "").replace("\n", "")
             secondCourseLine = re.sub(r'^[ ]{3}(\w)',r'\t\t\1', secondCourseLine)
             secondCourseLine = re.sub(r'^[ ]{9}(?=\w)', r'\t\t\t', secondCourseLine)
+            secondCourseLine = re.sub(r'[ ]{3}(-TEXT|-ACCESS\sCARD|-W\/ACCESS)', r' \1', secondCourseLine)
+            secondCourseLine = re.sub(r'[ ]{2}(\(HOLLANDER\))', r' \1', secondCourseLine)
             secondCourseLine = re.sub(r'[ ]{2,}', r'\t', secondCourseLine)
 
 
