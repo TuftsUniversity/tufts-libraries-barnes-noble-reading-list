@@ -33,12 +33,16 @@ import xlwt
 import xlrd
 
 import io
+import datetime
 
 Tk().withdraw()
 
 filename = askopenfilename(title = "Select Barnes & Noble reading list file")
 
-outfile = open("Cleaned Barnes and Noble File.txt", "w+")
+today = datetime.datetime.now().date()
+filename_date = today.strftime('%Y-%m-%d')
+outfile_name = "Cleaned Barnes and Noble File " + filename_date + ".txt"
+outfile = open(outfile_name, "w+")
 
 testfile = open("Test File.txt", "w+")
 outfile.write("Author~Title~Edition~ISBN~Additional Barcodes or Material Type~Course~Section~Professor\n")
@@ -67,8 +71,8 @@ with open(filename, 'rb') as infile:
         #print("Current line: " + line + "\n")
         data_string = ""
         line = line.replace("\r", "").replace("\n", "")
-        line = re.sub(r'^[ ]{3}(\w)',r'\t\t\1', line)
-        line = re.sub(r'^[ ]{9}(?=\w)', r'\t\t\t', line)
+        line = re.sub(r'^[ ]{3}(\S)',r'\t\t\1', line)
+        line = re.sub(r'^[ ]{9}(?=\S)', r'\t\t\t', line)
         #this was to take care of an anomoly that appeared in the data for Fall 2019 courses
         line = re.sub(r'[ ]{3}(-TEXT|-ACCESS\sCARD|-W\/ACCESS)', r'\s\1', line)
         line = re.sub(r'[ ]{2}(\(HOLLANDER\))', r' \1', line)
@@ -221,8 +225,11 @@ testfile.close()
 
 
 
-filename = "Cleaned Barnes and Noble File.txt"
-textFile = io.open(filename, 'r+', encoding='latin-1')
+
+
+
+
+textFile = io.open(outfile_name, 'r+', encoding='latin-1')
 row_list = []
 for row in textFile:
     row_list.append(row.split('~'))
@@ -235,4 +242,9 @@ for column in column_list:
         value = column[item].strip()
         worksheet.write(item, i, value)
     i+=1
-workbook.save(filename.replace('.txt', '.xls'))
+
+workbook.save(outfile_name.replace('.txt', '.xls'))
+
+# filename1 = "Cleaned Barnes and Noble File " + filename_date + ".xls"
+#
+# workbook.save(filename.replace(filename, filename1))
