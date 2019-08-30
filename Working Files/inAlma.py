@@ -45,8 +45,6 @@ from django.utils.encoding import smart_str, smart_unicode
 
 bNFilename = askopenfilename(title = "Select the Excel file parsed from Barnes & Noble reading lists")
 
-# managedSetFilename = askopenfilename(title = "Select the Excel file output from the Managed Set")
-
 courseSubsetFilename = askopenfilename(title = "Select the Excel file containing courses in the textbook program.")
 
 courseNumberMappingFilename = askopenfilename(title = "Select the Excel file containing course number and ID mapping")
@@ -83,44 +81,7 @@ cmdf = cmdf.loc[:, ['SIS Course Number', 'Alma Course Number']]
 
 print("\n\ncmdf: \n" + str(cmdf))
 
-
-
-bndf['Additional Barcodes or Material Type'] = bndf['Additional Barcodes or Material Type'].str.replace(' ', '')
-bndf['Additional Barcodes or Material Type'] = bndf['Additional Barcodes or Material Type'].str.split(';')
-
-#bndf['Additional Barcodes or Material Type'] = bndf['Additional Barcodes or Material Type'].astype('int64')
-bndf = bndf.fillna(0)
-bndf['ISBN'] = bndf['ISBN'].astype('object')
-
-# print(str(bndf) + "\n\n")
-
-
-bndf = (bndf
-    .set_index(['Author', 'Title', 'Edition', 'ISBN', 'Course', 'Section', 'Professor'])['Additional Barcodes or Material Type']
-    .apply(pd.Series)
-    .stack()
-    .reset_index()
-    .drop('level_7', axis=1)
-    .rename(columns={0:'ISBN Additional'}))
-
-# print(str(bndf) + "\n\n")
-
-
-
-
-
-
-keys = [c for c in bndf if c.startswith('ISBN')]
-
-print("\n\n" + str(keys))
-
-
-bndf = pd.melt(bndf, id_vars=(['Author', 'Title', 'Edition', 'Section', 'Professor', 'Course']), value_vars=keys, value_name='ISBN').drop('variable', axis=1)
-
 bndf['ISBN'] = bndf['ISBN'].astype('str')
-
-
-
 
 bndf['Course'] = bndf['Course'].apply(lambda x: x.encode(encoding='ascii', errors='replace'))
 bndf['Section'] = bndf['Section'].apply(lambda x: x.encode(encoding='ascii', errors='replace'))
@@ -133,19 +94,20 @@ profSeries = bndf['Professor'].str.split(';', expand=True).stack().str.strip().r
 bndf1 = pd.concat([courseSeries, sectionSeries, profSeries], axis=1, keys=['Course', 'Section', 'Professor'])
 
 bndf = bndf.drop(['Course', 'Section', 'Professor'], axis=1).join(bndf1).reset_index(drop=True)
-#
-# bndf['ISBN'] = bndf['ISBN'].astype('str')
 
+bndf = pd.merge(bndf, csdf, on=['Course'], how='inner')
+bndf = pd.merge(bndf, cmdf, left_on=['Course'], right_on='SIS Course Number', how='left')
 
-# print("\n\n\n" + str(bndf))
+bndf3 = bndf.copy()
 
+bndf3 = bndf3.drop_duplicates(subset=['ISBN'], keep='first')
 x = 0
 sru_url = "https://tufts.alma.exlibrisgroup.com/view/sru/01TUN_INST?version=1.2&operation=searchRetrieve&recordSchema=marcxml&query=alma.isbn="
 isbn_alma_df = pd.DataFrame(columns=['ISBN', 'MMS_ID'])
 
 isbn_alma_df['ISBN'] = isbn_alma_df['ISBN'].astype('str')
 
-isbn_list = bndf['ISBN'].tolist()
+isbn_list = bndf3['ISBN'].tolist()
 matchInBNDF = pd.DataFrame(columns=['ISBN', 'MMS ID'])
 
 matchInBNDF['ISBN'] = matchInBNDF['ISBN'].astype('str')
@@ -193,40 +155,9 @@ for isbn in isbn_list:
 
     x += 1
 
-matchInBNDF.to_excel("Initial Matched Alma ISBNs - All.xlsx", encoding='utf-8', index=False)
-isbn_alma_df['ISBN'] = isbn_alma_df['ISBN'].astype('str')
-# isbn_alma_df['ISBN (13)'] = isbn_alma_df['ISBN (13)'].astype('str')
-# isbn_alma_df['ISBN'] = isbn_alma_df['ISBN'].apply(lambda x: re.sub(r'\D', '', x))
-# isbn_alma_df['ISBN (13)'] = isbn_alma_df['ISBN (13)'].apply(lambda x: re.sub(r'\D', '', x))
-# isbn_alma_df = isbn_alma_df.fillna('Empty')
-#
-# keys_m = [c for c in isbn_alma_df if c.startswith('ISBN')]
 
-# print("\n\n" + str(keys))
-
-# isbn_alma_df = pd.melt(isbn_alma_df, id_vars=(['Title', 'Edition', 'MMS ID']), value_vars=keys_m, value_name='ISBN').drop('variable', axis=1)
-
-
-
-# print("\n\n\n" + str(isbn_alma_df))
-
-print("\n\nbndf: \n" + str(bndf))
-
-print("\n\ncsdf: \n" + str(csdf))
 bndf['ISBN'] = bndf['ISBN'].astype(str)
 bndf2 = bndf.copy()
-
-matchInBNDF = pd.merge(matchInBNDF, bndf2, on=['ISBN'], how='inner')
-
-matchInBNDF = pd.merge(matchInBNDF, csdf, on=['Course'], how='inner')
-matchInBNDF = pd.merge(matchInBNDF, cmdf, left_on=['Course'], right_on='SIS Course Number', how='left')
-
-bndf = pd.merge(bndf, csdf, on=['Course'], how='inner')
-bndf = pd.merge(bndf, cmdf, left_on=['Course'], right_on='SIS Course Number', how='left')
-
-bndf.to_excel("All Barnes & Noble - Separate Rows for Each ISBN - Fall 2019.xlsx", index=False)
-
-
 bndf = pd.merge(bndf, matchInBNDF, on=['ISBN'], how='outer', indicator=True)
 
 
@@ -234,15 +165,18 @@ bndf = pd.merge(bndf, matchInBNDF, on=['ISBN'], how='outer', indicator=True)
 
 books_to_order_df = bndf[bndf['_merge'] == 'left_only']
 
+matchInBNDF = pd.merge(matchInBNDF, bndf2, on=['ISBN'], how='left')
 
-
-books_to_order_df = books_to_order_df.sort_values('Course')
-matchInBNDF = matchInBNDF.sort_values('Course')
-
-
+# books_to_order_df = books_to_order_df.sort_values('Course')
+# matchInBNDF = matchInBNDF.sort_values('Course')
 
 
 
+books_to_order_df = books_to_order_df.groupby(['Author', 'Title', 'Edition', 'ISBN'])['Alma Course Number'].apply(list).reset_index()
+matchInBNDF = matchInBNDF.groupby(['Author', 'Title', 'Edition', 'ISBN'])['Alma Course Number'].apply(list).reset_index()
+
+books_to_order_df['Alma Course Number'] = books_to_order_df['Alma Course Number'].apply(lambda x: list( dict.fromkeys(x)))
+matchInBNDF['Alma Course Number'] = matchInBNDF['Alma Course Number'].apply(lambda x: list( dict.fromkeys(x)))
 
 today = datetime.datetime.now().date()
 filename_date = today.strftime('%Y-%m-%d')
