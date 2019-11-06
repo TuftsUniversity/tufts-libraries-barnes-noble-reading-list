@@ -43,18 +43,28 @@ import datetime
 import requests
 from django.utils.encoding import smart_str, smart_unicode
 
+
+oDir = "./Output"
+if not os.path.isdir(oDir) or not os.path.exists(oDir):
+    os.makedirs(oDir)
+
+pDir = "./Processing"
+if not os.path.isdir(pDir) or not os.path.exists(pDir):
+    os.makedirs(pDir)
+
 bNFilename = askopenfilename(title = "Select the Excel file parsed from Barnes & Noble reading lists")
 
 # managedSetFilename = askopenfilename(title = "Select the Excel file output from the Managed Set")
 
 courseSubsetFilename = askopenfilename(title = "Select the Excel file containing courses in the textbook program.")
 
-courseNumberMappingFilename = askopenfilename(title = "Select the Excel file containing course number and ID mapping")
+#courseNumberMappingFilename = askopenfilename(title = "Select the Excel file containing course number and ID mapping")
 
 bndf = pd.read_excel(bNFilename)
 # isbn_alma_df = pd.read_excel(managedSetFilename)
 csdf = pd.read_excel(courseSubsetFilename)
-cmdf = pd.read_excel(courseNumberMappingFilename, header=1)
+#cmdf = pd.read_excel(courseNumberMappingFilename)
+
 
 
 # isbn_alma_df = isbn_alma_df.loc[:,~isbn_alma_df.columns.duplicated()]
@@ -62,26 +72,28 @@ cmdf = pd.read_excel(courseNumberMappingFilename, header=1)
 
 # print(bndf)
 
-csdf['Course'] = csdf['Course'].apply(lambda x: x.encode("utf-8"))
+csdf['Course'] = csdf['Course'].apply(lambda x: smart_str(x))
+
+# csdf['Course'] = csdf['Course'].apply(lambda x: x.encode("utf-8"))
 
 csdf['Course'] = csdf['Course'].apply(lambda x: x.replace("-", " "))
 
 csdf['Course'] = csdf['Course'].apply(lambda x: x.strip())
 
-print("\n\ncmdf: \n" + str(cmdf))
-
-print("\n\ncmdf Subject: \n" + str(cmdf['Subject']))
-
-print("\n\ncmdf Catalog: \n" + str(cmdf['Catalog']))
-
-
-cmdf['SIS Course Number'] = cmdf['Subject'] + " " + cmdf['Catalog'].map(str)
-
-cmdf['Alma Course Number'] = cmdf['Term'].map(str) + "-" + cmdf['Class Nbr'].map(str)
-
-cmdf = cmdf.loc[:, ['SIS Course Number', 'Alma Course Number']]
-
-print("\n\ncmdf: \n" + str(cmdf))
+# print("\n\ncmdf: \n" + str(cmdf))
+#
+# print("\n\ncmdf Subject: \n" + str(cmdf['Subject']))
+#
+# print("\n\ncmdf Catalog: \n" + str(cmdf['Catalog']))
+#
+#
+# cmdf['SIS Course Number'] = cmdf['Subject'] + " " + cmdf['Catalog'].map(str)
+#
+# cmdf['Alma Course Number'] = cmdf['Term'].map(str) + "-" + cmdf['Class Nbr'].map(str)
+#
+# cmdf = cmdf.loc[:, ['SIS Course Number', 'Alma Course Number']]
+#
+# print("\n\ncmdf: \n" + str(cmdf))
 
 
 
@@ -145,16 +157,29 @@ isbn_alma_df = pd.DataFrame(columns=['ISBN', 'MMS_ID'])
 
 isbn_alma_df['ISBN'] = isbn_alma_df['ISBN'].astype('str')
 
+bndf = bndf.merge(csdf, on='Course', how='inner')
+
+print("BNDF limited to courses in list: " + str(bndf) + "\n\n")
+csdf = csdf.dropna(subset=['Course'])
 isbn_list = bndf['ISBN'].tolist()
 matchInBNDF = pd.DataFrame(columns=['ISBN', 'MMS ID'])
 
 matchInBNDF['ISBN'] = matchInBNDF['ISBN'].astype('str')
+
+
 for isbn in isbn_list:
+    if isbn.startswith("281"):
+        x += 1
+        continue
     sru_url_isbn = sru_url + str(isbn)
 
     print("Line number: " + str(x + 1) + "\nSRU URL: " + sru_url_isbn)
-    result = requests.get(sru_url_isbn)
+    try:
+        result = requests.get(sru_url_isbn)
 
+    except:
+        matchInBNDF = matchInBNDF.append({'ISBN': "NO MATCH", 'MMS_ID': "NO MATCH"}, ignore_index=True)
+        continue
     print("\n" + smart_str(result.content) + "\n")
 
     resultString = smart_str(result.content)
@@ -193,7 +218,9 @@ for isbn in isbn_list:
 
     x += 1
 
-matchInBNDF.to_excel("Initial Matched Alma ISBNs - All.xlsx", encoding='utf-8', index=False)
+matchInBNDF.to_excel(pDir + "/Initial Matched Alma ISBNs - All.xlsx", encoding='utf-8', index=False)
+
+bndf.to_excel(pDir + "/All Barnes & Noble - Separate Rows for Each ISBN - Fall 2019.xlsx", index=False)
 isbn_alma_df['ISBN'] = isbn_alma_df['ISBN'].astype('str')
 # isbn_alma_df['ISBN (13)'] = isbn_alma_df['ISBN (13)'].astype('str')
 # isbn_alma_df['ISBN'] = isbn_alma_df['ISBN'].apply(lambda x: re.sub(r'\D', '', x))
@@ -216,23 +243,23 @@ print("\n\ncsdf: \n" + str(csdf))
 bndf['ISBN'] = bndf['ISBN'].astype(str)
 bndf2 = bndf.copy()
 
-matchInBNDF = pd.merge(matchInBNDF, bndf2, on=['ISBN'], how='inner')
+matchInBNDF = pd.merge(matchInBNDF, bndf2, on=['ISBN'], how='left')
 
-matchInBNDF = pd.merge(matchInBNDF, csdf, on=['Course'], how='inner')
-matchInBNDF = pd.merge(matchInBNDF, cmdf, left_on=['Course'], right_on='SIS Course Number', how='left')
+#matchInBNDF = pd.merge(matchInBNDF, csdf, on=['Course'], how='inner')
+# matchInBNDF = pd.merge(matchInBNDF, cmdf, left_on=['Course'], right_on='SIS Course Number', how='left')
 
-bndf = pd.merge(bndf, csdf, on=['Course'], how='inner')
-bndf = pd.merge(bndf, cmdf, left_on=['Course'], right_on='SIS Course Number', how='left')
+bndf2 = pd.merge(bndf2, csdf, on=['Course'], how='inner')
+#bndf = pd.merge(bndf, cmdf, left_on=['Course'], right_on='SIS Course Number', how='left')
 
-bndf.to_excel("All Barnes & Noble - Separate Rows for Each ISBN - Fall 2019.xlsx", index=False)
+bndf2.to_excel(oDir + "/All Barnes & Noble - Separate Rows for Each ISBN - Fall 2019.xlsx", index=False)
 
-
-bndf = pd.merge(bndf, matchInBNDF, on=['ISBN'], how='outer', indicator=True)
-
-
+bndf3 = bndf2.copy()
+bndf3 = pd.merge(bndf2, matchInBNDF, on=['ISBN'], how='outer', indicator=True)
 
 
-books_to_order_df = bndf[bndf['_merge'] == 'left_only']
+
+
+books_to_order_df = bndf3[bndf3['_merge'] == 'left_only']
 
 
 
@@ -250,6 +277,6 @@ filename_date = today.strftime('%Y-%m-%d')
 
 # isbn_alma_df.to_excel("ISBN file from Alma " + filename_date + ".xslx", encoding='utf-8', index=False)
 
-books_to_order_df.to_excel("Books to Order " + filename_date + ".xlsx", encoding='utf-8', index=False)
+books_to_order_df.to_excel(oDir + "/Books to Order " + filename_date + ".xlsx", encoding='utf-8', index=False)
 
-matchInBNDF.to_excel('Books We Have ' + filename_date + '.xlsx', encoding='utf-8', index=False)
+matchInBNDF.to_excel(oDir + '/Books We Have ' + filename_date + '.xlsx', encoding='utf-8', index=False)
