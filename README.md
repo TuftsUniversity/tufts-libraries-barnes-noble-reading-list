@@ -1,7 +1,7 @@
 # tufts-libraries-barnes-noble-reading-list
 tufts-libraries-barnes-noble-reading-list
 
-**Title:** Parse Barnes & Noble reading list files
+**Title:** Parse Barnes & Noble Reading Lists
 
 **Author:** Henry Steele, Library Technology Services, Tufts University
 
