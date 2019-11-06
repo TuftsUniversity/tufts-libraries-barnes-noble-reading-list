@@ -10,11 +10,25 @@
 ########        are not already in our collection (Tufts/Alma), to identify
 ########        titles for puchase in the AS&E Textbook Initiative
 ########
+########        For each valid ISBN in the Barnes and Noble file, the script attempts
+########        to retrieve the bib record for this record from our Alma SRU
+########        (Search/Retrieval by URL) endpoint.
+########
 ########   Input:
-########        - output of parseBN.py "Cleaned Barnes and Noble File <date>.xls"
-########        - use the ISBN list from the B&N output file noted above to create a Managed
-########          Set in Alma.  Simply upload the file above into an itemized Managed Set.
-########          the members of this Managed Set is the second input
+########   - output of parseBN.py "Cleaned Barnes and Noble File <date>.xls"
+########   - course subset
+########        - this is the list of courses numbers that you wish to seek in
+########          in the Barnes and Noble
+########
+########   Output:
+########    - Books We Have.xlsx
+########        - If a record is retrieved from SRU, then
+########          we have the item in Alma, and information about the item including MMS ID,
+########          title, and course information, go in this file
+########    - Books to Order.xslx
+########        - Otherwise, the citation goes in this file, of thigns to be ordered
+
+
 
 import pandas as pd
 import numpy as np
