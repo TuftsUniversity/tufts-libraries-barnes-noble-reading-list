@@ -11,11 +11,7 @@
 ########        titles for puchase in the AS&E Textbook Initiative
 ########
 ########   Input:
-########        - output of parseBN.py
-########            - parse out all the ISBNs from this output file, using regex in
-########              Notepad++ ( at this point).  Get a one column list--some books
-########              have multiple ISBNs.  Enter "ISBN" as a header for this one
-########              column of data.
+########        - output of parseBN.py "Cleaned Barnes and Noble File <date>.xls"
 ########        - use the ISBN list from the B&N output file noted above to create a Managed
 ########          Set in Alma.  Simply upload the file above into an itemized Managed Set.
 ########          the members of this Managed Set is the second input
